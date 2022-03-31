@@ -5,7 +5,15 @@ from asyncio import Queue
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, status, WebSocket, Query, Depends, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    status,
+    WebSocket,
+    Query,
+    Depends,
+    WebSocketDisconnect,
+)
 from fastapi import security
 from fastapi.security import HTTPBasicCredentials
 from starlette.requests import Request
@@ -29,12 +37,10 @@ class Broker:
         self.subscribers: [int, dict[uuid.UUID, Queue]] = defaultdict(dict)
 
     def subscribe(self, chat_id: int, token: uuid.UUID) -> Queue:
-        print("Subbed")
         self.subscribers[chat_id][token] = Queue()
         return self.subscribers[chat_id][token]
 
     def unsubscribe(self, chat_id: int, token: uuid.UUID):
-        print("Unsubbed")
         self.subscribers[chat_id].pop(token)
 
     async def publish(self, chat_id: int, message: MessageInHistory):
@@ -192,13 +198,33 @@ async def ws_listen_to_chat(
     ws: WebSocket,
     user: User = Depends(get_current_user),
     chat: Chat = Depends(get_current_chat),
+    ses: Session = Depends(get_session),
     stream: Queue = Depends(get_chat_stream),
     _=Depends(filter_chat_members),
 ):
     await ws.accept()
-    try:
+    closing = False  # TODO: sync primitive must be used instead
+
+    async def receive_messages(ws: WebSocket):
+        nonlocal closing
         while True:
-            msg: MessageInHistory = await stream.get()
-            await ws.send_text(msg.json())
-    except WebSocketDisconnect:
-        pass
+            try:
+                data = await ws.receive_text()
+            except WebSocketDisconnect:
+                closing = True
+                return
+            msg = MessageCreate.parse_raw(data)
+            await post_message_to_chat(msg, user, chat, ses)
+
+    async def send_messages(ws: WebSocket):
+        nonlocal closing
+        while True:
+            if closing:
+                return
+            try:
+                msg: MessageInHistory = await asyncio.wait_for(stream.get(), 3)
+                await ws.send_text(msg.json())
+            except asyncio.exceptions.TimeoutError:
+                continue
+
+    await asyncio.gather(receive_messages(ws), send_messages(ws))

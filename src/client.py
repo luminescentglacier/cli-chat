@@ -121,16 +121,17 @@ def create_chat_prompt(api):
 class ChatApp:
     chat: ChatInfo = None
     user_id: int = None
+    ws: WebSocketApp = None
 
     def __init__(self, api: Api):
         self.api = api
-
         delim()
         self.login()
         delim()
         self.join_chat()
         delim()
         self.read_chat_history()
+        self.prepare_ws()
         reading_thread = threading.Thread(target=self.receive_updates)
         reading_thread.start()
         time.sleep(0.5)
@@ -148,7 +149,7 @@ class ChatApp:
     def receive_user_input(self):
         while True:
             text = input(" > ")
-            self.api.send_message(self.chat.id, MessageCreate(text=text))
+            self.ws.send(MessageCreate(text=text).json())
 
     def join_chat(self):
         all_chats = self.api.get_chats()
@@ -193,12 +194,14 @@ class ChatApp:
             logging.info(f"[{message.timestamp}] {message.user.name}: {message.text}")
         logging.info("~~~ End of chat history ~~~")
 
-    def receive_updates(self):
+    def prepare_ws(self):
         logging.info("Connecting to server...")
-        wsapp = self.api.listen_chat(self.chat.id)
-        wsapp.on_message = self.read_message
-        wsapp.on_open = lambda _: logging.info("Connected!")
-        wsapp.run_forever()
+        self.ws = self.api.listen_chat(self.chat.id)
+        self.ws.on_message = self.read_message
+        self.ws.on_open = lambda _: logging.info("Connected!")
+
+    def receive_updates(self):
+        self.ws.run_forever()
 
     def read_message(self, wsapp, data):
         message: MessageInHistory = MessageInHistory.parse_raw(data)
@@ -247,4 +250,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
