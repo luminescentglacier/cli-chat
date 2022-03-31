@@ -1,8 +1,10 @@
+from datetime import datetime
+
 from sqlalchemy import select, exc
 from sqlalchemy.orm import subqueryload
 
 from db import User, Chat, Session, Message
-from models import *
+from models import UserCredentials, ChatCreate, MessageCreate
 
 
 def get_user(ses: Session, user_id: int) -> User | None:
