@@ -5,11 +5,10 @@ from asyncio import Queue
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, status, WebSocket, Query, Depends
+from fastapi import FastAPI, HTTPException, status, WebSocket, Query, Depends, WebSocketDisconnect
 from fastapi import security
 from fastapi.security import HTTPBasicCredentials
 from starlette.requests import Request
-from starlette.websockets import WebSocketDisconnect
 
 import crud
 from db import User, Chat, Base, Session, engine
