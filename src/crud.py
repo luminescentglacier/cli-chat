@@ -7,6 +7,10 @@ from sqlalchemy.orm import subqueryload
 from db import User, Chat, Session, Message
 from models import UserCredentials, ChatCreate, MessageCreate
 
+import syslog
+
+syslog.openlog("cli-chat")
+
 
 def get_user(ses: Session, user_id: int) -> Optional[User]:
     return ses.get(User, user_id)
@@ -65,4 +69,7 @@ def create_message(
     )
     ses.add(message)
     ses.commit()
+    syslog.syslog(
+        syslog.LOG_INFO, f"C{message.chat_id}:U{message.user_id}:{message.text}"
+    )
     return message
