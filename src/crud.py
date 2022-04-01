@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import select, exc
 from sqlalchemy.orm import subqueryload
@@ -7,16 +8,16 @@ from db import User, Chat, Session, Message
 from models import UserCredentials, ChatCreate, MessageCreate
 
 
-def get_user(ses: Session, user_id: int) -> User | None:
+def get_user(ses: Session, user_id: int) -> Optional[User]:
     return ses.get(User, user_id)
 
 
-def get_user_by_name(ses: Session, name: str) -> User | None:
+def get_user_by_name(ses: Session, name: str) -> Optional[User]:
     q = select(User).where(User.name == name)
     return ses.execute(q).scalar_one_or_none()
 
 
-def create_user(ses: Session, credentials: UserCredentials) -> int | None:
+def create_user(ses: Session, credentials: UserCredentials) -> Optional[int]:
     user = User(name=credentials.name, password=credentials.password)
     ses.add(user)
     try:
@@ -26,7 +27,9 @@ def create_user(ses: Session, credentials: UserCredentials) -> int | None:
         return None
 
 
-def create_chat(ses: Session, chat_info: ChatCreate, owner_user_id: int) -> int | None:
+def create_chat(
+    ses: Session, chat_info: ChatCreate, owner_user_id: int
+) -> Optional[int]:
     chat = Chat(title=chat_info.title)
     chat.members.append(ses.get(User, owner_user_id))
     try:
@@ -36,7 +39,7 @@ def create_chat(ses: Session, chat_info: ChatCreate, owner_user_id: int) -> int 
         return None
 
 
-def get_chat(ses: Session, chat_id) -> User | None:
+def get_chat(ses: Session, chat_id) -> Optional[User]:
     return ses.get(Chat, chat_id)
 
 
@@ -45,7 +48,9 @@ def get_chat_list(ses: Session) -> list[Chat]:
     return ses.execute(q).scalars().all()
 
 
-def get_chat_history(ses: Session, chat_id: int, offset: int, limit: int | None = None):
+def get_chat_history(
+    ses: Session, chat_id: int, offset: int, limit: Optional[int] = None
+):
     q = select(Message).where(Message.chat_id == chat_id, Message.id >= offset)
     if limit:
         q = q.limit(limit)

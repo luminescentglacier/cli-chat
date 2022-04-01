@@ -240,13 +240,12 @@ def main():
     args = parser.parse_args()
     api = Api(UserCredentials(name=args.u, password=args.p), f"{args.host}:{args.port}")
 
-    match args.command:
-        case "register":
-            register_prompt(api)
-        case "create":
-            create_chat_prompt(api)
-        case "join":
-            ChatApp(api)
+    if args.command == "register":
+        register_prompt(api)
+    elif args.command == "create":
+        create_chat_prompt(api)
+    elif args.command == "join":
+        ChatApp(api)
 
 
 if __name__ == "__main__":
